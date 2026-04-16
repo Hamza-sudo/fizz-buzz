@@ -1,12 +1,15 @@
 APP_NAME := fizz-buzz
 
-.PHONY: run test build docker-build
+.PHONY: run test lint build docker-build
 
 run:
 	go run ./cmd/server
 
 test:
 	go test ./...
+
+lint:
+	go vet ./...
 
 build:
 	go build -o bin/$(APP_NAME) ./cmd/server
