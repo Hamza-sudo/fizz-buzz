@@ -54,6 +54,25 @@ func TestFizzBuzzEndpointValidationError(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rec.Code)
 	}
+
+	var got struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if got.Error.Code != "INVALID_PARAMETER" {
+		t.Fatalf("expected error code %q, got %q", "INVALID_PARAMETER", got.Error.Code)
+	}
+
+	if got.Error.Message == "" {
+		t.Fatal("expected non-empty error message")
+	}
 }
 
 func TestStatisticsEndpoint(t *testing.T) {

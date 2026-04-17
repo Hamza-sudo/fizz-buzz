@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 )
@@ -62,17 +63,6 @@ func TestFizzBuzz(t *testing.T) {
 			},
 			expected: []string{"1", "2", "ab", "4", "5", "ab"},
 		},
-		{
-			name: "int1 is zero",
-			params: FizzBuzzParams{
-				Int1:  0,
-				Int2:  2,
-				Limit: 4,
-				Str1:  "fizz",
-				Str2:  "buzz",
-			},
-			expected: []string{"1", "buzz", "3", "buzz"},
-		},
 	}
 
 	for _, tt := range tests {
@@ -82,5 +72,19 @@ func TestFizzBuzz(t *testing.T) {
 				t.Errorf("FizzBuzz(%+v)\ngot:  %v\nwant: %v", tt.params, result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestFizzBuzzParamsValidate(t *testing.T) {
+	err := (FizzBuzzParams{
+		Int1:  0,
+		Int2:  5,
+		Limit: 10,
+		Str1:  "fizz",
+		Str2:  "buzz",
+	}).Validate()
+
+	if !errors.Is(err, ErrInt1Required) {
+		t.Fatalf("expected ErrInt1Required, got %v", err)
 	}
 }

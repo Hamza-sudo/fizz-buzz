@@ -53,10 +53,10 @@ func FizzBuzz(p FizzBuzzParams) []string {
 		var sb strings.Builder
 
 		// Concatenate both replacement strings when a number matches both divisors.
-		if p.Int1 != 0 && i%p.Int1 == 0 {
+		if i%p.Int1 == 0 {
 			sb.WriteString(p.Str1)
 		}
-		if p.Int2 != 0 && i%p.Int2 == 0 {
+		if i%p.Int2 == 0 {
 			sb.WriteString(p.Str2)
 		}
 

@@ -10,9 +10,23 @@ import (
 	"fizz-buzz/internal/stats"
 )
 
+const (
+	errorCodeInvalidParameter = "INVALID_PARAMETER"
+	errorCodeInternal         = "INTERNAL_ERROR"
+)
+
 // Handler groups HTTP dependencies.
 type Handler struct {
 	stats *stats.Store
+}
+
+type errorBody struct {
+	Error apiError `json:"error"`
+}
+
+type apiError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 // NewHandler wires the HTTP handlers.
@@ -32,7 +46,7 @@ func (h *Handler) Routes() http.Handler {
 func (h *Handler) handleFizzBuzz(w http.ResponseWriter, r *http.Request) {
 	params, err := parseParams(r)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		writeError(w, http.StatusBadRequest, errorCodeInvalidParameter, err.Error())
 		return
 	}
 
@@ -113,6 +127,15 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 
 	// Encoding should normally succeed with our payloads, but we still fail safely.
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
-		http.Error(w, `{"error":"failed to encode response"}`, http.StatusInternalServerError)
+		http.Error(w, `{"error":{"code":"`+errorCodeInternal+`","message":"failed to encode response"}}`, http.StatusInternalServerError)
 	}
+}
+
+func writeError(w http.ResponseWriter, status int, code string, message string) {
+	writeJSON(w, status, errorBody{
+		Error: apiError{
+			Code:    code,
+			Message: message,
+		},
+	})
 }

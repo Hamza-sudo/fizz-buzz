@@ -69,6 +69,19 @@ Response:
 }
 ```
 
+### Validation error format
+
+Example (`400 Bad Request`):
+
+```json
+{
+  "error": {
+    "code": "INVALID_PARAMETER",
+    "message": "int1 must be greater than 0"
+  }
+}
+```
+
 ## Validation rules
 
 - `int1 > 0`
