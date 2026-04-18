@@ -9,8 +9,10 @@ import (
 	"fizz-buzz/internal/stats"
 )
 
+const testMaxLimit = 100000
+
 func TestFizzBuzzEndpoint(t *testing.T) {
-	handler := NewHandler(stats.NewStore()).Routes()
+	handler := NewHandler(stats.NewStore(), testMaxLimit).Routes()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/fizzbuzz?int1=3&int2=5&limit=15&str1=fizz&str2=buzz", nil)
 	rec := httptest.NewRecorder()
@@ -44,7 +46,7 @@ func TestFizzBuzzEndpoint(t *testing.T) {
 }
 
 func TestFizzBuzzEndpointValidationError(t *testing.T) {
-	handler := NewHandler(stats.NewStore()).Routes()
+	handler := NewHandler(stats.NewStore(), testMaxLimit).Routes()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/fizzbuzz?int1=0&int2=5&limit=15&str1=fizz&str2=buzz", nil)
 	rec := httptest.NewRecorder()
@@ -76,7 +78,7 @@ func TestFizzBuzzEndpointValidationError(t *testing.T) {
 }
 
 func TestStatisticsEndpoint(t *testing.T) {
-	handler := NewHandler(stats.NewStore()).Routes()
+	handler := NewHandler(stats.NewStore(), testMaxLimit).Routes()
 
 	requests := []string{
 		"/api/v1/fizzbuzz?int1=3&int2=5&limit=15&str1=fizz&str2=buzz",
@@ -119,5 +121,18 @@ func TestStatisticsEndpoint(t *testing.T) {
 
 	if got.Params.Int1 != 3 || got.Params.Int2 != 5 || got.Params.Limit != 15 || got.Params.Str1 != "fizz" || got.Params.Str2 != "buzz" {
 		t.Fatalf("unexpected top params: %+v", got.Params)
+	}
+}
+
+func TestFizzBuzzEndpointLimitTooLarge(t *testing.T) {
+	handler := NewHandler(stats.NewStore(), 10).Routes()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/fizzbuzz?int1=3&int2=5&limit=11&str1=fizz&str2=buzz", nil)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rec.Code)
 	}
 }

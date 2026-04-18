@@ -24,7 +24,7 @@ var (
 )
 
 // Validate checks whether the parameters are usable by the API.
-func (p FizzBuzzParams) Validate() error {
+func (p FizzBuzzParams) Validate(maxLimit int) error {
 	switch {
 	case p.Int1 <= 0:
 		return ErrInt1Required
@@ -32,6 +32,8 @@ func (p FizzBuzzParams) Validate() error {
 		return ErrInt2Required
 	case p.Limit <= 0:
 		return ErrLimitRequired
+	case maxLimit > 0 && p.Limit > maxLimit:
+		return errors.New("limit must be less than or equal to " + strconv.Itoa(maxLimit))
 	case p.Str1 == "":
 		return ErrStr1Required
 	case p.Str2 == "":

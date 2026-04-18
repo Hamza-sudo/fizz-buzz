@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 
 const (
 	defaultAddr       = ":8080"
+	defaultMaxLimit   = 100000
 	shutdownTimeout   = 10 * time.Second
 	readHeaderTimeout = 5 * time.Second
 	readTimeout       = 10 * time.Second
@@ -25,7 +27,8 @@ const (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	statsStore := stats.NewStore()
-	handler := httpapi.NewHandler(statsStore)
+	maxLimit := serverMaxLimit(logger)
+	handler := httpapi.NewHandler(statsStore, maxLimit)
 	addr := serverAddr()
 
 	// Configure conservative defaults so the server behaves safely in production-like environments.
@@ -72,4 +75,20 @@ func serverAddr() string {
 
 	// Default to a conventional local development port.
 	return defaultAddr
+}
+
+func serverMaxLimit(logger *slog.Logger) int {
+	value := os.Getenv("MAX_LIMIT")
+	if value == "" {
+		return defaultMaxLimit
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed <= 0 {
+		logger.Warn("invalid MAX_LIMIT, falling back to default", "value", value, "default", defaultMaxLimit)
+		return defaultMaxLimit
+	}
+
+	logger.Info("using custom max limit", "max_limit", parsed)
+	return parsed
 }

@@ -17,7 +17,8 @@ const (
 
 // Handler groups HTTP dependencies.
 type Handler struct {
-	stats *stats.Store
+	stats    *stats.Store
+	maxLimit int
 }
 
 type errorBody struct {
@@ -30,8 +31,8 @@ type apiError struct {
 }
 
 // NewHandler wires the HTTP handlers.
-func NewHandler(statsStore *stats.Store) *Handler {
-	return &Handler{stats: statsStore}
+func NewHandler(statsStore *stats.Store, maxLimit int) *Handler {
+	return &Handler{stats: statsStore, maxLimit: maxLimit}
 }
 
 // Routes returns the API router.
@@ -44,7 +45,7 @@ func (h *Handler) Routes() http.Handler {
 }
 
 func (h *Handler) handleFizzBuzz(w http.ResponseWriter, r *http.Request) {
-	params, err := parseParams(r)
+	params, err := h.parseParams(r)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, errorCodeInvalidParameter, err.Error())
 		return
@@ -74,7 +75,7 @@ func (h *Handler) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-func parseParams(r *http.Request) (service.FizzBuzzParams, error) {
+func (h *Handler) parseParams(r *http.Request) (service.FizzBuzzParams, error) {
 	query := r.URL.Query()
 
 	// Parse numeric fields first so the API can return precise validation errors.
@@ -101,7 +102,7 @@ func parseParams(r *http.Request) (service.FizzBuzzParams, error) {
 		Str2:  query.Get("str2"),
 	}
 
-	if err := params.Validate(); err != nil {
+	if err := params.Validate(h.maxLimit); err != nil {
 		return service.FizzBuzzParams{}, err
 	}
 

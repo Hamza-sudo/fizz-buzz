@@ -82,9 +82,23 @@ func TestFizzBuzzParamsValidate(t *testing.T) {
 		Limit: 10,
 		Str1:  "fizz",
 		Str2:  "buzz",
-	}).Validate()
+	}).Validate(1000)
 
 	if !errors.Is(err, ErrInt1Required) {
 		t.Fatalf("expected ErrInt1Required, got %v", err)
+	}
+}
+
+func TestFizzBuzzParamsValidateLimitTooLarge(t *testing.T) {
+	err := (FizzBuzzParams{
+		Int1:  3,
+		Int2:  5,
+		Limit: 1001,
+		Str1:  "fizz",
+		Str2:  "buzz",
+	}).Validate(1000)
+
+	if err == nil {
+		t.Fatal("expected validation error for limit")
 	}
 }

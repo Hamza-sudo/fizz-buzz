@@ -26,6 +26,7 @@ make run
 
 Server listens on `:8080` by default.
 You can override it with `PORT`, for example `PORT=9090 go run ./cmd/server`.
+You can also configure `MAX_LIMIT` (default: `100000`), for example `MAX_LIMIT=50000 go run ./cmd/server`.
 
 ## Run with Docker
 
@@ -87,6 +88,7 @@ Example (`400 Bad Request`):
 - `int1 > 0`
 - `int2 > 0`
 - `limit > 0`
+- `limit <= MAX_LIMIT` (default `100000`)
 - `str1` and `str2` must not be empty
 
 ## Tests
