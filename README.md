@@ -14,6 +14,8 @@ Small production-minded Go HTTP service exposing a configurable FizzBuzz API and
 
 ## Run locally
 
+Prerequisite: Go `1.26.x` (or newer in the `1.26` line).
+
 ```bash
 go run ./cmd/server
 ```
@@ -72,6 +74,29 @@ Response:
 }
 ```
 
+When no request has been recorded yet:
+
+```json
+{
+  "params": null,
+  "hits": 0
+}
+```
+
+### Health check
+
+```bash
+curl "http://localhost:8080/health"
+```
+
+Response:
+
+```json
+{
+  "status": "ok"
+}
+```
+
 ### Validation error format
 
 Example (`400 Bad Request`):
@@ -119,7 +144,7 @@ make test
 
 ## Possible next improvements
 
+- add request logging / metrics to improve troubleshooting and SLO tracking
+- expose OpenAPI documentation to make integrations and contract validation easier
+- add configuration struct and environment validation for safer deployments
 - add automated DB backups / retention policies depending on deployment constraints
-- add request logging / metrics
-- expose OpenAPI documentation
-- add configuration struct and environment validation for larger deployments
