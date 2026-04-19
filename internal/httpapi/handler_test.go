@@ -1,11 +1,14 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"fizz-buzz/internal/service"
 	"fizz-buzz/internal/stats"
 )
 
@@ -137,6 +140,18 @@ func TestFizzBuzzEndpointLimitTooLarge(t *testing.T) {
 	}
 }
 
+func TestFizzBuzzEndpointSucceedsWhenStatsRecordFails(t *testing.T) {
+	handler := NewHandler(failingStore{}, testMaxLimit).Routes()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/fizzbuzz?int1=3&int2=5&limit=5&str1=fizz&str2=buzz", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+	}
+}
+
 func newTestHandler(t *testing.T, maxLimit int) *Handler {
 	t.Helper()
 
@@ -152,4 +167,18 @@ func newTestHandler(t *testing.T, maxLimit int) *Handler {
 	})
 
 	return NewHandler(store, maxLimit)
+}
+
+type failingStore struct{}
+
+func (failingStore) Record(context.Context, service.FizzBuzzParams) error {
+	return errors.New("stats unavailable")
+}
+
+func (failingStore) Top(context.Context) (stats.Entry, bool, error) {
+	return stats.Entry{}, false, nil
+}
+
+func (failingStore) Close() error {
+	return nil
 }

@@ -28,6 +28,7 @@ Server listens on `:8080` by default.
 You can override it with `PORT`, for example `PORT=9090 go run ./cmd/server`.
 You can also configure `MAX_LIMIT` (default: `100000`), for example `MAX_LIMIT=50000 go run ./cmd/server`.
 By default statistics are stored in `file:fizzbuzz_stats.db`; override with `STATS_DB_DSN` if needed.
+You can tune DB operation timeout with `STATS_DB_TIMEOUT_MS` (default: `200`), for example `STATS_DB_TIMEOUT_MS=500`.
 
 ## Run with Docker
 

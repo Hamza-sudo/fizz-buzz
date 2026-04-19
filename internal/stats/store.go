@@ -5,10 +5,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"fizz-buzz/internal/service"
 	_ "modernc.org/sqlite"
 )
+
+const defaultDBOperationTimeout = 200 * time.Millisecond
+const migrationTimeout = 2 * time.Second
 
 // Entry represents a counted request and its hit count.
 type Entry struct {
@@ -25,18 +29,38 @@ type Store interface {
 
 // SQLStore keeps FizzBuzz request statistics in a SQL database.
 type SQLStore struct {
-	db *sql.DB
+	db        *sql.DB
+	opTimeout time.Duration
 }
 
 // NewSQLiteStore creates a ready-to-use SQLite-backed statistics store.
 func NewSQLiteStore(dsn string) (*SQLStore, error) {
+	return NewSQLiteStoreWithTimeout(dsn, defaultDBOperationTimeout)
+}
+
+// NewSQLiteStoreWithTimeout creates a SQLite-backed statistics store with a custom DB operation timeout.
+func NewSQLiteStoreWithTimeout(dsn string, operationTimeout time.Duration) (*SQLStore, error) {
+	if operationTimeout <= 0 {
+		operationTimeout = defaultDBOperationTimeout
+	}
+
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
 	}
+	// SQLite handles concurrent writes with a single writer lock, so keep one open
+	// connection to avoid lock contention from the sql.DB pool under load.
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
 
-	store := &SQLStore{db: db}
-	if err := store.migrate(context.Background()); err != nil {
+	store := &SQLStore{
+		db:        db,
+		opTimeout: operationTimeout,
+	}
+	migrationCtx, cancel := context.WithTimeout(context.Background(), migrationTimeout)
+	defer cancel()
+
+	if err := store.migrate(migrationCtx); err != nil {
 		_ = db.Close()
 		return nil, err
 	}
@@ -46,7 +70,10 @@ func NewSQLiteStore(dsn string) (*SQLStore, error) {
 
 // Record increments the hit counter for a request.
 func (s *SQLStore) Record(ctx context.Context, params service.FizzBuzzParams) error {
-	_, err := s.db.ExecContext(ctx, `
+	opCtx, cancel := context.WithTimeout(ctx, s.opTimeout)
+	defer cancel()
+
+	_, err := s.db.ExecContext(opCtx, `
 		INSERT INTO request_stats (int1, int2, limit_value, str1, str2, hits)
 		VALUES (?, ?, ?, ?, ?, 1)
 		ON CONFLICT(int1, int2, limit_value, str1, str2)
@@ -61,8 +88,11 @@ func (s *SQLStore) Record(ctx context.Context, params service.FizzBuzzParams) er
 
 // Top returns the most frequently requested parameters.
 func (s *SQLStore) Top(ctx context.Context) (Entry, bool, error) {
+	opCtx, cancel := context.WithTimeout(ctx, s.opTimeout)
+	defer cancel()
+
 	var entry Entry
-	row := s.db.QueryRowContext(ctx, `
+	row := s.db.QueryRowContext(opCtx, `
 		SELECT int1, int2, limit_value, str1, str2, hits
 		FROM request_stats
 		ORDER BY hits DESC, id ASC

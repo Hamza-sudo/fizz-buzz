@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -52,11 +53,8 @@ func (h *Handler) handleFizzBuzz(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result := service.FizzBuzz(params)
-	// Only successful requests are recorded in the statistics store.
-	if err := h.stats.Record(r.Context(), params); err != nil {
-		writeError(w, http.StatusInternalServerError, errorCodeInternal, "failed to persist request statistics")
-		return
-	}
+	// Stats are best-effort and must not fail the functional FizzBuzz endpoint.
+	_ = h.stats.Record(r.Context(), params)
 
 	writeJSON(w, http.StatusOK, result)
 }
@@ -130,12 +128,18 @@ func parsePositiveInt(value string, field string) (int, error) {
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
+	var body bytes.Buffer
+	// Encode in memory first so we can still choose the right status code if encoding fails.
+	if err := json.NewEncoder(&body).Encode(payload); err != nil {
+		http.Error(w, `{"error":{"code":"`+errorCodeInternal+`","message":"failed to encode response"}}`, http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-
-	// Encoding should normally succeed with our payloads, but we still fail safely.
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
-		http.Error(w, `{"error":{"code":"`+errorCodeInternal+`","message":"failed to encode response"}}`, http.StatusInternalServerError)
+	if _, err := w.Write(body.Bytes()); err != nil {
+		// At this point headers are already written; nothing safe left to return.
+		return
 	}
 }
 

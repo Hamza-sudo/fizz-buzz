@@ -18,6 +18,7 @@ const (
 	defaultAddr       = ":8080"
 	defaultMaxLimit   = 100000
 	defaultStatsDBDSN = "file:fizzbuzz_stats.db"
+	defaultDBTimeout  = 200 * time.Millisecond
 	shutdownTimeout   = 10 * time.Second
 	readHeaderTimeout = 5 * time.Second
 	readTimeout       = 10 * time.Second
@@ -27,7 +28,7 @@ const (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	statsStore, err := stats.NewSQLiteStore(statsDBDSN())
+	statsStore, err := stats.NewSQLiteStoreWithTimeout(statsDBDSN(), statsDBTimeout(logger))
 	if err != nil {
 		logger.Error("failed to initialize stats store", "error", err)
 		os.Exit(1)
@@ -84,6 +85,23 @@ func statsDBDSN() string {
 	}
 
 	return defaultStatsDBDSN
+}
+
+func statsDBTimeout(logger *slog.Logger) time.Duration {
+	value := os.Getenv("STATS_DB_TIMEOUT_MS")
+	if value == "" {
+		return defaultDBTimeout
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed <= 0 {
+		logger.Warn("invalid STATS_DB_TIMEOUT_MS, falling back to default", "value", value, "default_ms", defaultDBTimeout.Milliseconds())
+		return defaultDBTimeout
+	}
+
+	timeout := time.Duration(parsed) * time.Millisecond
+	logger.Info("using custom stats db timeout", "timeout_ms", parsed)
+	return timeout
 }
 
 func serverAddr() string {
