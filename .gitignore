@@ -1,0 +1,14 @@
+.DS_Store
+
+# Build artifacts
+/bin/
+
+# Local runtime data
+/fizzbuzz_stats.db
+/fizzbuzz_stats.db-shm
+/fizzbuzz_stats.db-wal
+
+# Local caches used during development
+/.gopath/
+/.gocache/
+/.gomodcache/

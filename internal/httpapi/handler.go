@@ -17,7 +17,7 @@ const (
 
 // Handler groups HTTP dependencies.
 type Handler struct {
-	stats    *stats.Store
+	stats    stats.Store
 	maxLimit int
 }
 
@@ -31,7 +31,7 @@ type apiError struct {
 }
 
 // NewHandler wires the HTTP handlers.
-func NewHandler(statsStore *stats.Store, maxLimit int) *Handler {
+func NewHandler(statsStore stats.Store, maxLimit int) *Handler {
 	return &Handler{stats: statsStore, maxLimit: maxLimit}
 }
 
@@ -53,13 +53,20 @@ func (h *Handler) handleFizzBuzz(w http.ResponseWriter, r *http.Request) {
 
 	result := service.FizzBuzz(params)
 	// Only successful requests are recorded in the statistics store.
-	h.stats.Record(params)
+	if err := h.stats.Record(r.Context(), params); err != nil {
+		writeError(w, http.StatusInternalServerError, errorCodeInternal, "failed to persist request statistics")
+		return
+	}
 
 	writeJSON(w, http.StatusOK, result)
 }
 
-func (h *Handler) handleStatistics(w http.ResponseWriter, _ *http.Request) {
-	entry, ok := h.stats.Top()
+func (h *Handler) handleStatistics(w http.ResponseWriter, r *http.Request) {
+	entry, ok, err := h.stats.Top(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, errorCodeInternal, "failed to read request statistics")
+		return
+	}
 	if !ok {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"params": nil,

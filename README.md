@@ -8,7 +8,7 @@ Small production-minded Go HTTP service exposing a configurable FizzBuzz API and
 - `GET /api/v1/statistics`
 - `GET /health`
 - strict request validation
-- thread-safe in-memory request statistics
+- persistent SQLite request statistics
 - graceful shutdown and HTTP server timeouts
 - test coverage for business logic and HTTP endpoints
 
@@ -27,6 +27,7 @@ make run
 Server listens on `:8080` by default.
 You can override it with `PORT`, for example `PORT=9090 go run ./cmd/server`.
 You can also configure `MAX_LIMIT` (default: `100000`), for example `MAX_LIMIT=50000 go run ./cmd/server`.
+By default statistics are stored in `file:fizzbuzz_stats.db`; override with `STATS_DB_DSN` if needed.
 
 ## Run with Docker
 
@@ -111,13 +112,13 @@ make test
   - `internal/httpapi`: transport and request validation
   - `internal/stats`: request counting
   - `cmd/server`: application bootstrap
-- In-memory statistics store protected by a mutex to remain safe under concurrent access.
+- SQLite-backed statistics store for durability across restarts.
 - HTTP server configured with timeouts and graceful shutdown to be closer to production expectations.
 - Structured JSON logs through `slog` for easier observability.
 
 ## Possible next improvements
 
-- persist statistics in Redis or a database if cross-restart durability is needed
+- add automated DB backups / retention policies depending on deployment constraints
 - add request logging / metrics
 - expose OpenAPI documentation
 - add configuration struct and environment validation for larger deployments

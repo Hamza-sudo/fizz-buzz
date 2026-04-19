@@ -17,6 +17,7 @@ import (
 const (
 	defaultAddr       = ":8080"
 	defaultMaxLimit   = 100000
+	defaultStatsDBDSN = "file:fizzbuzz_stats.db"
 	shutdownTimeout   = 10 * time.Second
 	readHeaderTimeout = 5 * time.Second
 	readTimeout       = 10 * time.Second
@@ -26,7 +27,16 @@ const (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	statsStore := stats.NewStore()
+	statsStore, err := stats.NewSQLiteStore(statsDBDSN())
+	if err != nil {
+		logger.Error("failed to initialize stats store", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if closeErr := statsStore.Close(); closeErr != nil {
+			logger.Error("failed to close stats store", "error", closeErr)
+		}
+	}()
 	maxLimit := serverMaxLimit(logger)
 	handler := httpapi.NewHandler(statsStore, maxLimit)
 	addr := serverAddr()
@@ -66,6 +76,14 @@ func main() {
 	}
 
 	logger.Info("server stopped")
+}
+
+func statsDBDSN() string {
+	if dsn := os.Getenv("STATS_DB_DSN"); dsn != "" {
+		return dsn
+	}
+
+	return defaultStatsDBDSN
 }
 
 func serverAddr() string {

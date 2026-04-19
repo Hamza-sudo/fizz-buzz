@@ -12,7 +12,7 @@ import (
 const testMaxLimit = 100000
 
 func TestFizzBuzzEndpoint(t *testing.T) {
-	handler := NewHandler(stats.NewStore(), testMaxLimit).Routes()
+	handler := newTestHandler(t, testMaxLimit).Routes()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/fizzbuzz?int1=3&int2=5&limit=15&str1=fizz&str2=buzz", nil)
 	rec := httptest.NewRecorder()
@@ -46,7 +46,7 @@ func TestFizzBuzzEndpoint(t *testing.T) {
 }
 
 func TestFizzBuzzEndpointValidationError(t *testing.T) {
-	handler := NewHandler(stats.NewStore(), testMaxLimit).Routes()
+	handler := newTestHandler(t, testMaxLimit).Routes()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/fizzbuzz?int1=0&int2=5&limit=15&str1=fizz&str2=buzz", nil)
 	rec := httptest.NewRecorder()
@@ -78,7 +78,7 @@ func TestFizzBuzzEndpointValidationError(t *testing.T) {
 }
 
 func TestStatisticsEndpoint(t *testing.T) {
-	handler := NewHandler(stats.NewStore(), testMaxLimit).Routes()
+	handler := newTestHandler(t, testMaxLimit).Routes()
 
 	requests := []string{
 		"/api/v1/fizzbuzz?int1=3&int2=5&limit=15&str1=fizz&str2=buzz",
@@ -125,7 +125,7 @@ func TestStatisticsEndpoint(t *testing.T) {
 }
 
 func TestFizzBuzzEndpointLimitTooLarge(t *testing.T) {
-	handler := NewHandler(stats.NewStore(), 10).Routes()
+	handler := newTestHandler(t, 10).Routes()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/fizzbuzz?int1=3&int2=5&limit=11&str1=fizz&str2=buzz", nil)
 	rec := httptest.NewRecorder()
@@ -135,4 +135,21 @@ func TestFizzBuzzEndpointLimitTooLarge(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rec.Code)
 	}
+}
+
+func newTestHandler(t *testing.T, maxLimit int) *Handler {
+	t.Helper()
+
+	store, err := stats.NewSQLiteStore("file::memory:?cache=shared")
+	if err != nil {
+		t.Fatalf("create sqlite stats store: %v", err)
+	}
+
+	t.Cleanup(func() {
+		if closeErr := store.Close(); closeErr != nil {
+			t.Fatalf("close sqlite stats store: %v", closeErr)
+		}
+	})
+
+	return NewHandler(store, maxLimit)
 }
